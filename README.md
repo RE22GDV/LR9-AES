@@ -66,7 +66,7 @@ AES шифрує блок зі 128 бітів, поданий як матриц�
 <a id="formula-1"></a>
 
 $$
-N_r = N_k + 6 \in \{10,\ 12,\ 14\}, \qquad
+N_r = N_k + 6 \in \lbrace 10,\ 12,\ 14 \rbrace, \qquad
 S_r = \mathrm{AddRoundKey}\big(\mathrm{MixColumns}(\mathrm{ShiftRows}(\mathrm{SubBytes}(S_{r-1}))),\ K_r\big) \qquad\text{(1)}
 $$
 
@@ -87,9 +87,9 @@ $$
 <a id="formula-3"></a>
 
 $$
-\begin{pmatrix} s'_0 \\ s'_1 \\ s'_2 \\ s'_3 \end{pmatrix} =
-\begin{pmatrix} 2 & 3 & 1 & 1 \\ 1 & 2 & 3 & 1 \\ 1 & 1 & 2 & 3 \\ 3 & 1 & 1 & 2 \end{pmatrix}
-\begin{pmatrix} s_0 \\ s_1 \\ s_2 \\ s_3 \end{pmatrix} \qquad\text{(3)}
+\begin{pmatrix} s'_0 \cr s'_1 \cr s'_2 \cr s'_3 \end{pmatrix} =
+\begin{pmatrix} 2 & 3 & 1 & 1 \cr 1 & 2 & 3 & 1 \cr 1 & 1 & 2 & 3 \cr 3 & 1 & 1 & 2 \end{pmatrix}
+\begin{pmatrix} s_0 \cr s_1 \cr s_2 \cr s_3 \end{pmatrix} \qquad\text{(3)}
 $$
 
 ### Режими шифрування
@@ -121,7 +121,7 @@ $$
 <a id="formula-6"></a>
 
 $$
-C_i = P_i \oplus E_K\!\left((T_0 + i) \bmod 2^{128}\right) \qquad\text{(6)}
+C_i = P_i \oplus E_K\left((T_0 + i) \bmod 2^{128}\right) \qquad\text{(6)}
 $$
 
 CTS (варіант CBC-CS3, як у RFC 3962) обходиться без доповнення: останній
@@ -164,7 +164,7 @@ SP 800-38D: інакше порожній чи скорочений тег зб�
 <a id="formula-9"></a>
 
 $$
-K \,\|\, K_{\text{MAC}} = \mathrm{PBKDF2}\big(\mathrm{HMAC\text{-}SHA256},\ \text{пароль},\ \text{сіль},\ c = 600\,000\big) \qquad\text{(9)}
+K \mathbin{\Vert} K_{\text{MAC}} = \mathrm{PBKDF2}\big(\mathrm{HMAC\text{-}SHA256},\ \text{пароль},\ \text{сіль},\ c = 600\thinspace 000\big) \qquad\text{(9)}
 $$
 
 ```mermaid
@@ -504,7 +504,7 @@ CFB-8 виконує 16 шифрувань блоку на кожні 16 бай�
 <a id="formula-11"></a>
 
 $$
-p_{ij} = \Pr\big[\,y_j(x) \ne y_j(x \oplus e_i)\,\big] = \tfrac{1}{2}, \qquad i, j = 0, \ldots, 127 \qquad\text{(11)}
+p_{ij} = \Pr\big[y_j(x) \ne y_j(x \oplus e_i)\big] = \tfrac{1}{2}, \qquad i, j = 0, \ldots, 127 \qquad\text{(11)}
 $$
 
 Матрицю 128 × 128 оцінено за 400 випадковими парами ключ — блок. Після
@@ -527,8 +527,8 @@ S-блок AES обрано так, щоб жодна різниця на вхо
 <a id="formula-12"></a>
 
 $$
-\delta = \max_{a \ne 0,\ b} \#\{x : S(x) \oplus S(x \oplus a) = b\} = 4, \qquad
-\mathrm{NL} = 128 - \max_{a,\ b \ne 0} \big|\#\{x : a \cdot x = b \cdot S(x)\} - 128\big| = 112 \qquad\text{(12)}
+\delta = \max_{a \ne 0,\ b} \big\lvert \lbrace x : S(x) \oplus S(x \oplus a) = b \rbrace \big\rvert = 4, \qquad
+\mathrm{NL} = 128 - \max_{a,\ b \ne 0} \Big\lvert \big\lvert \lbrace x : a \cdot x = b \cdot S(x) \rbrace \big\rvert - 128 \Big\rvert = 112 \qquad\text{(12)}
 $$
 
 Отже, найкращий диференціал одного S-блоку має ймовірність 4/256 = 2⁻⁶,
