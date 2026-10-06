@@ -33,7 +33,7 @@ jobs:
         run: python -m pytest -q --ignore=tests/test_cross_and_gui.py
 
   csharp:
-    name: C#: AES-CTR
+    name: "C#: AES-CTR"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
