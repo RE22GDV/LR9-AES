@@ -101,3 +101,40 @@ def test_ecb_keeps_image_structure() -> None:
     assert analysis.repeated_blocks(ecb)[1] == analysis.repeated_blocks(px)[1]
     total, distinct = analysis.repeated_blocks(ctr)
     assert distinct == total
+
+
+def test_sbox_design_criteria() -> None:
+    props = analysis.sbox_properties()
+    assert props["differential_uniformity"] == 4
+    assert props["nonlinearity"] == 112 and props["max_linear_bias"] == 16
+    assert props["algebraic_degree"] == 7
+    assert props["fixed_points"] == props["opposite_fixed_points"] == 0
+    assert props["ddt_histogram"] == {0: 255 * 129, 2: 255 * 126, 4: 255}
+
+
+def test_identity_permutation_is_a_bad_sbox() -> None:
+    props = analysis.sbox_properties(list(range(256)))
+    assert props["differential_uniformity"] == 256 and props["nonlinearity"] == 0
+
+
+def test_walsh_transform_matches_direct_count() -> None:
+    from aeslab.aes import SBOX
+    lat = analysis.sbox_linear_bias()
+    for a, b in ((1, 1), (0x53, 0xCA), (0xFF, 0x80)):
+        direct = sum((bin(a & x).count("1") & 1) == (bin(b & SBOX[x]).count("1") & 1)
+                     for x in range(256)) - 128
+        assert lat[a][b] == direct
+
+
+def test_sac_first_round_touches_one_column_only() -> None:
+    mats = analysis.sac_matrices(6, random.Random(3), rounds=(1, 2))
+    # після першого раунду інверсія біта 0 зачіпає лише 32 біти одного стовпця
+    assert sum(1 for p in mats[1][0] if p > 0) <= 32
+    assert sum(1 for p in mats[2][0] if p > 0) > 100
+
+
+def test_byte_statistics() -> None:
+    zeros = analysis.byte_statistics(bytes(4096))
+    assert zeros["entropy"] == 0.0 and zeros["distinct_blocks"] == 1
+    rnd = analysis.byte_statistics(random.Random(1).randbytes(65536))
+    assert rnd["entropy"] > 7.99 and rnd["distinct_blocks"] == rnd["blocks"]

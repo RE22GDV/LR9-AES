@@ -253,7 +253,15 @@ class GHash:
 def _gcm_setup(cipher, nonce: bytes) -> tuple[GHash, int]:
     if not nonce:
         raise ValueError("порожній nonce")
-    gh = GHash(int.from_bytes(cipher.encrypt_block(bytes(BLOCK)), "big"))
+    # Таблиці GHASH залежать лише від ключа (H = E_K(0)), тож обчислюються
+    # один раз для об'єкта шифру й далі використовуються повторно.
+    gh = getattr(cipher, "_gcm_ghash", None)
+    if gh is None:
+        gh = GHash(int.from_bytes(cipher.encrypt_block(bytes(BLOCK)), "big"))
+        try:
+            cipher._gcm_ghash = gh
+        except AttributeError:                # об'єкт без атрибутів — без кешу
+            pass
     if len(nonce) == 12:
         j0 = int.from_bytes(nonce + b"\0\0\0\1", "big")
     else:

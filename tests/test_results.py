@@ -61,3 +61,18 @@ def test_parallel_measurements_present(results) -> None:
     assert set(par["seconds"]) == {"ctr", "cbc_dec"}
     for kind in par["seconds"].values():
         assert all(v > 0 for v in kind.values())
+
+
+def test_new_studies(results) -> None:
+    assert results["sbox"]["aes"]["nonlinearity"] == 112
+    assert results["sbox"]["random_permutation"]["differential_uniformity"] > 4
+    dev = results["sac"]["mean_abs_deviation"]
+    assert dev["1"] > 0.3 and dev["10"] < 2 * results["sac"]["ideal_deviation"]
+    stats = results["statistics"]["stats"]["нулі"]
+    assert stats["ECB"]["distinct_blocks"] == 1
+    assert all(stats[m]["entropy"] > 7.9 for m in ("CBC", "CTR", "OFB", "GCM"))
+    rows = {(r["mode"], r["iv"]): r for r in results["determinism"]["rows"]}
+    assert rows[("ECB", "немає IV")]["same_message_same_ciphertext"]
+    assert rows[("CBC", "сталий IV")]["common_prefix_bytes"] == 48
+    assert not rows[("CBC", "новий випадковий IV")]["same_message_same_ciphertext"]
+    assert rows[("CTR", "сталий лічильник")]["common_prefix_bytes"] >= 48

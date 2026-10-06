@@ -15,16 +15,20 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
+import math
 import os
+import secrets
+import string
 import sys
 import threading
 import time
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from . import analysis, container, demo_image, modes
-from .aes import AES
+from .aes import AES, INV_SBOX, SBOX
 from .backends import IMPLEMENTATIONS
 
 MODE_TITLES = {
@@ -48,10 +52,18 @@ MODE_NOTES = {
     "GCM": "Автентифіковане шифрування: будь-яка зміна шифротексту виявляється.",
 }
 
+if sys.platform == "win32":
+    UI_FAMILY, MONO_FAMILY = "Segoe UI", "Consolas"
+elif sys.platform == "darwin":
+    UI_FAMILY, MONO_FAMILY = "Helvetica Neue", "Menlo"
+else:
+    UI_FAMILY, MONO_FAMILY = "DejaVu Sans", "DejaVu Sans Mono"
+
 ACCENT = "#2a78d6"
 WARN = "#c4561d"
 OK = "#1a8f63"
-MONO = ("Consolas", 10)
+MONO = (MONO_FAMILY, 10)
+BLOCK_COLORS = ("#fde1d3", "#d6e8fb", "#d3f2e5", "#e8dff8", "#fbefc9", "#f9d6e3")
 
 
 def _hex(data: bytes) -> str:
@@ -90,7 +102,7 @@ class TextTab(ttk.Frame):
         ttk.Combobox(top, textvariable=self.impl, values=list(IMPLEMENTATIONS), width=24,
                      state="readonly").grid(row=0, column=7, sticky="w")
 
-        self.mode_title = ttk.Label(self, font=("Segoe UI", 11, "bold"))
+        self.mode_title = ttk.Label(self, font=(UI_FAMILY, 11, "bold"))
         self.mode_title.pack(anchor="w", pady=(10, 0))
         self.mode_note = ttk.Label(self, foreground="#52514e")
         self.mode_note.pack(anchor="w")
@@ -112,6 +124,15 @@ class TextTab(ttk.Frame):
         self.aad = tk.StringVar()
         self.aad_entry = ttk.Entry(keys, textvariable=self.aad)
         self.aad_entry.grid(row=2, column=1, sticky="ew", padx=4)
+        ttk.Button(keys, text="Ключ із пароля…", command=self.key_from_password).grid(row=2, column=2)
+
+        tools = ttk.Frame(self)
+        tools.pack(fill="x", pady=(2, 0))
+        ttk.Button(tools, text="Відкрити текст…", command=self.open_text).pack(side="left")
+        ttk.Button(tools, text="Зберегти шифротекст…", command=self.save_cipher).pack(side="left", padx=6)
+        ttk.Button(tools, text="Копіювати шифротекст", command=self.copy_cipher).pack(side="left")
+        ttk.Label(tools, text="у hex-вигляді однакові блоки шифротексту підсвічено однаковим кольором",
+                  foreground="#8a8984").pack(side="right")
 
         body = ttk.Frame(self)
         body.pack(fill="both", expand=True, pady=(8, 0))
@@ -127,7 +148,7 @@ class TextTab(ttk.Frame):
                         command=self.reformat).pack(side="right")
         ttk.Radiobutton(out_head, text="Base64", value="b64", variable=self.fmt,
                         command=self.reformat).pack(side="right", padx=6)
-        self.plain = tk.Text(body, height=10, wrap="word", font=("Segoe UI", 10), undo=True)
+        self.plain = tk.Text(body, height=10, wrap="word", font=(UI_FAMILY, 10), undo=True)
         self.plain.grid(row=1, column=0, sticky="nsew")
         buttons = ttk.Frame(body)
         buttons.grid(row=1, column=1, padx=10)
@@ -175,10 +196,62 @@ class TextTab(ttk.Frame):
         self.reformat()
 
     def reformat(self):
-        text = (self.last_cipher.hex() if self.fmt.get() == "hex"
-                else base64.b64encode(self.last_cipher).decode())
-        self.cipher_text.delete("1.0", "end")
-        self.cipher_text.insert("1.0", text)
+        box = self.cipher_text
+        box.delete("1.0", "end")
+        if self.fmt.get() != "hex":
+            box.insert("1.0", base64.b64encode(self.last_cipher).decode())
+            return
+        data = self.last_cipher
+        blocks = [data[i:i + 16] for i in range(0, len(data), 16)]
+        counts = {}
+        for b in blocks:
+            if len(b) == 16:
+                counts[b] = counts.get(b, 0) + 1
+        colors = {}
+        for i, b in enumerate(blocks):
+            tag = ""
+            if counts.get(b, 0) > 1:                 # повторюваний блок — свій колір
+                if b not in colors:
+                    colors[b] = f"rep{len(colors) % len(BLOCK_COLORS)}"
+                tag = colors[b]
+            box.insert("end", b.hex(" "), tag)
+            box.insert("end", "\n" if i < len(blocks) - 1 else "")
+        for k, color in enumerate(BLOCK_COLORS):
+            box.tag_configure(f"rep{k}", background=color)
+
+    def key_from_password(self):
+        pw = simpledialog.askstring("Ключ із пароля", "Пароль:", show="•", parent=self)
+        if not pw:
+            return
+        salt = os.urandom(16)
+        key = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), salt, container.DEFAULT_ITERATIONS,
+                                  self.key_bits.get() // 8)
+        self.key.set(key.hex())
+        self.info.config(text=f"Ключ виведено PBKDF2-HMAC-SHA256 ({container.DEFAULT_ITERATIONS:,} ітерацій), "
+                              f"сіль {salt.hex()} — ".replace(",", " ") +
+                              "її треба зберегти, щоб знову отримати той самий ключ.",
+                         foreground="#52514e")
+
+    def open_text(self):
+        path = filedialog.askopenfilename(filetypes=[("Текст", "*.txt *.md *.csv"), ("Усі файли", "*.*")])
+        if path:
+            self.plain.delete("1.0", "end")
+            self.plain.insert("1.0", Path(path).read_text(encoding="utf-8", errors="replace"))
+
+    def save_cipher(self):
+        if not self.last_cipher:
+            return
+        path = filedialog.asksaveasfilename(defaultextension=".bin",
+                                            filetypes=[("Двійковий файл", "*.bin"), ("Hex", "*.txt")])
+        if path:
+            if path.endswith(".txt"):
+                Path(path).write_text(self.last_cipher.hex(), encoding="ascii")
+            else:
+                Path(path).write_bytes(self.last_cipher)
+
+    def copy_cipher(self):
+        self.clipboard_clear()
+        self.clipboard_append(self.cipher_text.get("1.0", "end").strip())
 
     def read_cipher(self) -> bytes:
         raw = self.cipher_text.get("1.0", "end").strip()
@@ -245,7 +318,7 @@ class FileTab(ttk.Frame):
         self.app = app
         self.worker: threading.Thread | None = None
         self.columnconfigure(1, weight=1)
-        ttk.Label(self, text="Шифрування файлів паролем", font=("Segoe UI", 12, "bold")).grid(
+        ttk.Label(self, text="Шифрування файлів паролем", font=(UI_FAMILY, 12, "bold")).grid(
             row=0, column=0, columnspan=3, sticky="w")
         ttk.Label(self, text="Ключ виводиться з пароля через PBKDF2-HMAC-SHA256 із випадковою сіллю. "
                              "Цілісність перевіряється завжди: тег GCM або HMAC-SHA256.",
@@ -257,12 +330,20 @@ class FileTab(ttk.Frame):
         ttk.Button(self, text="Огляд…", command=self.browse).grid(row=2, column=2)
         ttk.Label(self, text="Пароль:").grid(row=3, column=0, sticky="w", pady=6)
         self.password = tk.StringVar()
-        self.pw_entry = ttk.Entry(self, textvariable=self.password, show="•")
-        self.pw_entry.grid(row=3, column=1, sticky="ew", padx=4)
+        pw_frame = ttk.Frame(self)
+        pw_frame.grid(row=3, column=1, sticky="ew", padx=4)
+        self.pw_entry = ttk.Entry(pw_frame, textvariable=self.password, show="•")
+        self.pw_entry.pack(fill="x")
+        self.strength = ttk.Label(pw_frame, foreground="#52514e")
+        self.strength.pack(anchor="w")
         self.show = tk.BooleanVar()
-        ttk.Checkbutton(self, text="показати", variable=self.show,
+        pw_tools = ttk.Frame(self)
+        pw_tools.grid(row=3, column=2, sticky="w")
+        ttk.Checkbutton(pw_tools, text="показати", variable=self.show,
                         command=lambda: self.pw_entry.config(show="" if self.show.get() else "•")
-                        ).grid(row=3, column=2, sticky="w")
+                        ).pack(side="left")
+        ttk.Button(pw_tools, text="Згенерувати", command=self.generate_password).pack(side="left", padx=4)
+        self.password.trace_add("write", lambda *_: self.update_strength())
         opts = ttk.Frame(self)
         opts.grid(row=4, column=0, columnspan=3, sticky="w", pady=6)
         ttk.Label(opts, text="Режим:").pack(side="left")
@@ -288,6 +369,7 @@ class FileTab(ttk.Frame):
                    command=lambda: self.run(True)).pack(side="left")
         ttk.Button(row, text="Розшифрувати .aeslab", command=lambda: self.run(False)).pack(
             side="left", padx=8)
+        ttk.Button(row, text="Відомості про файл", command=self.file_info).pack(side="left")
         self.progress = ttk.Progressbar(self, mode="indeterminate", length=300)
         self.progress.grid(row=6, column=0, columnspan=2, sticky="w")
         self.status = ttk.Label(self, wraplength=900, justify="left")
@@ -297,6 +379,47 @@ class FileTab(ttk.Frame):
         path = filedialog.askopenfilename()
         if path:
             self.path.set(path)
+
+    def generate_password(self):
+        alphabet = string.ascii_letters + string.digits + "-_.!?"
+        self.password.set("".join(secrets.choice(alphabet) for _ in range(20)))
+        self.show.set(True)
+        self.pw_entry.config(show="")
+
+    @staticmethod
+    def estimate_bits(pw: str) -> float:
+        """Груба оцінка: довжина × log2(розмір використаних класів символів)."""
+        pool = 0
+        pool += 26 if any(c.islower() and c.isascii() for c in pw) else 0
+        pool += 26 if any(c.isupper() and c.isascii() for c in pw) else 0
+        pool += 10 if any(c.isdigit() for c in pw) else 0
+        pool += 33 if any(not c.isalnum() and c.isascii() for c in pw) else 0
+        pool += 66 if any(not c.isascii() for c in pw) else 0       # кирилиця тощо
+        return len(pw) * math.log2(pool) if pool else 0.0
+
+    def update_strength(self):
+        bits = self.estimate_bits(self.password.get())
+        level = ("слабкий" if bits < 50 else "помірний" if bits < 80 else "сильний")
+        color = WARN if bits < 50 else ("#52514e" if bits < 80 else OK)
+        self.strength.config(text=f"Оцінка пароля: ≈ {bits:.0f} біт — {level} "
+                                  f"(груба оцінка за довжиною й класами символів)" if bits else "",
+                             foreground=color)
+
+    def file_info(self):
+        path = Path(self.path.get())
+        try:
+            header, pos = container.read_header(path.read_bytes()[:256])
+        except (OSError, container.ContainerError) as exc:
+            self.status.config(text=f"Не файл AES Studio: {exc}", foreground=WARN)
+            return
+        tag = 16 if modes.MODE_INFO[header.mode]["auth"] else 32
+        size = path.stat().st_size
+        self.status.config(
+            text=f"{path.name}: режим {header.mode}, ключ {8 * header.key_len} біт, PBKDF2 "
+                 f"{header.iterations} ітерацій, сіль {header.salt.hex()}, IV/nonce {header.iv.hex() or '—'}; "
+                 f"заголовок {pos} Б, дані {size - pos - tag} Б, "
+                 f"{'тег GCM' if tag == 16 else 'HMAC-SHA256'} {tag} Б.",
+            foreground="#52514e")
 
     def run(self, encrypt: bool):
         path, pw = Path(self.path.get()), self.password.get()
@@ -351,11 +474,12 @@ class ImageTab(ttk.Frame):
         bar.pack(fill="x")
         ttk.Label(bar, text="Режим:").pack(side="left")
         self.mode = tk.StringVar(value="ECB")
-        for m in ("ECB", "CBC", "CTR", "OFB", "GCM"):
+        for m in ("ECB", "CBC", "CFB", "OFB", "CTR", "CTS", "GCM"):
             ttk.Radiobutton(bar, text=m, value=m, variable=self.mode,
                             command=self.refresh).pack(side="left", padx=4)
         ttk.Button(bar, text="Новий ключ", command=self.rekey).pack(side="left", padx=12)
         ttk.Button(bar, text="Відкрити зображення…", command=self.open_image).pack(side="left")
+        ttk.Button(bar, text="Зберегти зашифроване…", command=self.save_image).pack(side="left", padx=6)
         frames = ttk.Frame(self)
         frames.pack(fill="both", expand=True, pady=10)
         self.left = ttk.Label(frames)
@@ -388,6 +512,11 @@ class ImageTab(ttk.Frame):
             return
         self.width, self.height, self.pixels = w, h, px
         self.refresh()
+
+    def save_image(self):
+        path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG", "*.png")])
+        if path:
+            self._right_img.write(path, format="png")
 
     def _photo(self, pixels: bytes) -> tk.PhotoImage:
         img = tk.PhotoImage(data=demo_image.to_ppm(self.width, self.height, pixels), format="PPM")
@@ -444,6 +573,28 @@ class CompareTab(ttk.Frame):
                                    "перший біт другого блоку шифротексту; показано, скільки байтів "
                                    "відкритого тексту зіпсовано після розшифрування.")
         self.note.pack(anchor="w")
+        self.chart = tk.Canvas(self, height=230, background="white", highlightthickness=0)
+        self.chart.pack(fill="x", pady=(10, 0))
+        self.speeds: dict[str, float] = {}
+
+    def draw_chart(self):
+        c = self.chart
+        c.delete("all")
+        if not self.speeds:
+            return
+        width = max(c.winfo_width(), 900)
+        top = max(self.speeds.values())
+        bar_w = (width - 120) / len(self.speeds)
+        c.create_text(10, 12, anchor="w", text=f"Швидкість шифрування, КБ/с ({self.impl.get()})",
+                      font=(UI_FAMILY, 10, "bold"))
+        for i, (m, v) in enumerate(self.speeds.items()):
+            x0 = 60 + i * bar_w + 10
+            h = 160 * v / top
+            color = OK if m == "GCM" else (WARN if m == "ECB" else ACCENT)
+            c.create_rectangle(x0, 200 - h, x0 + bar_w - 20, 200, fill=color, outline="")
+            c.create_text(x0 + (bar_w - 20) / 2, 192 - h, text=f"{v:,.0f}".replace(",", " "),
+                          font=(UI_FAMILY, 9))
+            c.create_text(x0 + (bar_w - 20) / 2, 214, text=m, font=(UI_FAMILY, 9))
 
     def _set(self, mode: str, column: str, value: str):
         self.tree.set(mode, column, value)
@@ -460,7 +611,9 @@ class CompareTab(ttk.Frame):
             t0 = time.perf_counter()
             modes.encrypt(m, cipher, iv, data)
             speed = len(data) / 1024 / (time.perf_counter() - t0)
+            self.speeds[m] = speed
             self.after(0, self._set, m, "speed", f"{speed:,.0f}".replace(",", " "))
+        self.after(0, self.draw_chart)
 
     def propagate(self):
         key, iv16 = os.urandom(16), os.urandom(16)
@@ -497,10 +650,14 @@ class RoundsTab(ttk.Frame):
             row=2, column=1, sticky="w", padx=4)
         ttk.Button(form, text="Показати раунди", style="Accent.TButton",
                    command=self.show).grid(row=0, column=2, rowspan=3, padx=8)
-        self.text = tk.Text(self, font=MONO, height=26, wrap="none")
+        self.text = tk.Text(self, font=MONO, height=22, wrap="none")
         self.text.pack(fill="both", expand=True, pady=8)
+        ttk.Label(self, text="Побітова карта: кожен квадрат — 128 бітів стану (8 × 16); "
+                             "помаранчеві клітинки — біти, що змінилися").pack(anchor="w")
+        self.bits = tk.Canvas(self, height=86, background="white", highlightthickness=0)
+        self.bits.pack(fill="x", pady=(4, 0))
         self.text.tag_configure("diff", background="#fde1d3", foreground="#7a2e0e")
-        self.text.tag_configure("head", foreground=ACCENT, font=("Consolas", 10, "bold"))
+        self.text.tag_configure("head", foreground=ACCENT, font=(MONO_FAMILY, 10, "bold"))
         self.show()
 
     def show(self):
@@ -536,6 +693,91 @@ class RoundsTab(ttk.Frame):
                 t.insert("end", "\n")
             t.insert("end", "\n")
         t.insert("end", f"Шифротекст: {bytes(a[-1]).hex()}")
+        self.draw_bits(a, b)
+
+    def draw_bits(self, a, b):
+        c = self.bits
+        c.delete("all")
+        cell = 4
+        for r, (sa, sb) in enumerate(zip(a, b)):
+            x0 = 8 + r * (16 * cell + 12)
+            diff = int.from_bytes(bytes(sa), "big") ^ int.from_bytes(bytes(sb), "big")
+            for k in range(128):
+                row, col = divmod(k, 16)
+                on = (diff >> (127 - k)) & 1
+                c.create_rectangle(x0 + col * cell, 6 + row * cell, x0 + col * cell + cell - 1,
+                                   6 + row * cell + cell - 1, outline="",
+                                   fill="#eb6834" if on else "#ecebe7")
+            c.create_text(x0 + 8 * cell, 6 + 8 * cell + 12, text=str(r), font=(UI_FAMILY, 8))
+
+
+class SBoxTab(ttk.Frame):
+    """S-блок AES: таблиця, обернений елемент і критерії стійкості."""
+
+    CELL = 34
+
+    def __init__(self, master, app):
+        super().__init__(master, padding=12)
+        self.app = app
+        ttk.Label(self, text="S-блок AES: S(a) = A·a⁻¹ ⊕ 63 у полі GF(2⁸)",
+                  font=(UI_FAMILY, 12, "bold")).pack(anchor="w")
+        body = ttk.Frame(self)
+        body.pack(fill="both", expand=True, pady=8)
+        size = self.CELL * 17
+        self.canvas = tk.Canvas(body, width=size, height=size, background="white", highlightthickness=0)
+        self.canvas.pack(side="left")
+        self.canvas.bind("<Button-1>", self.on_click)
+        side = ttk.Frame(body, padding=(16, 0))
+        side.pack(side="left", fill="both", expand=True)
+        self.detail = ttk.Label(side, font=MONO, justify="left")
+        self.detail.pack(anchor="w")
+        props = analysis.sbox_properties()
+        ttk.Label(side, text="Критерії стійкості (обчислено з таблиці):",
+                  font=(UI_FAMILY, 10, "bold")).pack(anchor="w", pady=(16, 4))
+        hist = ", ".join(f"{v}×{k}" for k, v in props["ddt_histogram"].items())
+        ttk.Label(side, justify="left", wraplength=480, text=(
+            f"• диференційна рівномірність: {props['differential_uniformity']} "
+            f"(найбільша ймовірність диференціала {props['differential_uniformity']}/256 = 2⁻⁶);\n"
+            f"• нелінійність: {props['nonlinearity']} (найбільше лінійне зміщення "
+            f"{props['max_linear_bias']}/256);\n"
+            f"• алгебраїчний степінь компонент: {props['algebraic_degree']};\n"
+            f"• нерухомих точок S(a) = a: {props['fixed_points']}, "
+            f"S(a) = a ⊕ ff: {props['opposite_fixed_points']};\n"
+            f"• таблиця різниць (a ≠ 0): {hist}.")).pack(anchor="w")
+        self.selected = 0x53
+        self.draw()
+        self.select(self.selected)
+
+    def draw(self):
+        c, n = self.canvas, self.CELL
+        c.delete("all")
+        for i in range(16):
+            c.create_text(n * (i + 1.5), n / 2, text=f"{i:x}", font=(MONO_FAMILY, 10, "bold"), fill=ACCENT)
+            c.create_text(n / 2, n * (i + 1.5), text=f"{i:x}", font=(MONO_FAMILY, 10, "bold"), fill=ACCENT)
+        for a in range(256):
+            row, col = divmod(a, 16)
+            x0, y0 = n * (col + 1), n * (row + 1)
+            fill = "#fde1d3" if a == self.selected else ("#f6f5f1" if (row + col) % 2 else "white")
+            c.create_rectangle(x0, y0, x0 + n, y0 + n, fill=fill, outline="#e3e2de")
+            c.create_text(x0 + n / 2, y0 + n / 2, text=f"{SBOX[a]:02x}", font=(MONO_FAMILY, 10))
+
+    def on_click(self, event):
+        col, row = int(event.x // self.CELL) - 1, int(event.y // self.CELL) - 1
+        if 0 <= row < 16 and 0 <= col < 16:
+            self.select(16 * row + col)
+
+    def select(self, a: int):
+        from .aes import gmul
+        self.selected = a
+        self.draw()
+        inv = next((b for b in range(1, 256) if gmul(a, b) == 1), 0)
+        s = SBOX[a]
+        self.detail.config(text=(
+            f"a        = {a:02x}  ({a:08b})\n"
+            f"a⁻¹      = {inv:02x}  ({inv:08b})   обернений у GF(2⁸)\n"
+            f"S(a)     = {s:02x}  ({s:08b})   після афінного перетворення\n"
+            f"S⁻¹(a)   = {INV_SBOX[a]:02x}\n"
+            f"S(a) ⊕ a = {s ^ a:02x}  ({bin(s ^ a).count('1')} біт відрізняються)"))
 
 
 class AESStudio(tk.Tk):
@@ -545,14 +787,17 @@ class AESStudio(tk.Tk):
         self.geometry("1180x760")
         self.minsize(1000, 640)
         style = ttk.Style(self)
-        if "vista" in style.theme_names():
-            style.theme_use("vista")
-        style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"))
+        for theme in ("vista", "aqua", "clam"):        # Windows, macOS, Linux
+            if theme in style.theme_names():
+                style.theme_use(theme)
+                break
+        style.configure("Accent.TButton", font=(UI_FAMILY, 10, "bold"))
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=8, pady=8)
         self.tabs = {}
         for name, cls in (("Текст", TextTab), ("Файли", FileTab), ("Зображення", ImageTab),
-                          ("Порівняння режимів", CompareTab), ("Раунди AES", RoundsTab)):
+                          ("Порівняння режимів", CompareTab), ("Раунди AES", RoundsTab),
+                          ("S-блок", SBoxTab)):
             tab = cls(self.notebook, self)
             self.notebook.add(tab, text=name)
             self.tabs[name] = tab
@@ -571,7 +816,7 @@ def _dpi_aware():
 
 
 def screenshots(app: AESStudio, out_dir: Path) -> None:
-    """Зберегти знімки вкладок (потрібен Pillow; лише Windows/macOS)."""
+    """Зберегти знімки вкладок (потрібен Pillow; Windows, macOS або Linux з X11)."""
     from PIL import ImageGrab
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -583,19 +828,35 @@ def screenshots(app: AESStudio, out_dir: Path) -> None:
 
     def encrypt_sample():
         files.path.set(str(sample))
-        files.password.set("correct horse battery staple")
+        files.generate_password()
         files.run(True)
         while files.worker.is_alive():          # не join(): потік звертається до Tk
             app.update()
             time.sleep(0.05)
         app.update()
 
+    def text_demo():
+        text.mode.set("ECB")
+        text.on_mode()
+        text.plain.delete("1.0", "end")
+        line = "Звіт за жовтень: ДОХІД 100 000 UAH."
+        while (len(line.encode("utf-8")) + 1) % 16:      # рядок займає ціле число блоків
+            line += " "
+        text.plain.insert("1.0", (line + "\n") * 4 + "Однакові рядки → однакові блоки (ECB).")
+        text.encrypt()
+
+    def compare_demo():
+        compare.propagate()
+        compare._measure(IMPLEMENTATIONS["Таблична (T-таблиці)"])
+        app.update()
+        compare.draw_chart()
+
     plan = [
-        ("Текст", "gui_text.png", lambda: text.encrypt()),
+        ("Текст", "gui_text.png", text_demo),
         ("Зображення", "gui_image.png", lambda: None),
-        ("Порівняння режимів", "gui_compare.png", lambda: (compare.propagate(), compare._measure(
-            IMPLEMENTATIONS["Таблична (T-таблиці)"]))),
+        ("Порівняння режимів", "gui_compare.png", compare_demo),
         ("Раунди AES", "gui_rounds.png", lambda: None),
+        ("S-блок", "gui_sbox.png", lambda: None),
         ("Файли", "gui_files.png", encrypt_sample),
     ]
     for tab, name, action in plan:

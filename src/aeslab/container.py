@@ -28,7 +28,7 @@ from .aes_fast import FastAES
 MAGIC = b"AESLAB1\n"
 MODE_IDS = {name: i for i, name in enumerate(modes.MODES, start=1)}
 MODE_BY_ID = {i: name for name, i in MODE_IDS.items()}
-DEFAULT_ITERATIONS = 200_000
+DEFAULT_ITERATIONS = 600_000          # рекомендація OWASP для PBKDF2-HMAC-SHA256
 
 
 class ContainerError(ValueError):

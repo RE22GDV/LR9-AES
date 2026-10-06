@@ -473,6 +473,237 @@ def exp_parallel(quick: bool) -> dict:
             "cbc_encrypt_seconds": cbc_enc_time}
 
 
+
+# --------------------------------------------------------------------------- #
+#  7. Строгий лавинний критерій
+# --------------------------------------------------------------------------- #
+
+def exp_sac(quick: bool) -> dict:
+    print("[7] Строгий лавинний критерій (матриці 128 × 128)")
+    import numpy as np
+    trials = 40 if quick else 400
+    rounds = (1, 2, 3, 10)
+    mats = analysis.sac_matrices(trials, random.Random(SEED + 7), rounds)
+    dev = {r: float(np.mean(np.abs(np.array(m) - 0.5))) for r, m in mats.items()}
+    zero_share = {r: float(np.mean(np.array(m) == 0)) for r, m in mats.items()}
+    # Очікуване |p − ½| для ідеального шифру за обмеженої вибірки (біноміальний шум)
+    ideal = float(np.mean(np.abs(np.random.default_rng(SEED).binomial(trials, 0.5, 200_000) / trials - 0.5)))
+    fig, axes = plt.subplots(1, 4, figsize=(12.4, 3.6))
+    for ax, r in zip(axes, rounds):
+        im = ax.imshow(mats[r], cmap="RdBu_r", vmin=0, vmax=1, interpolation="nearest")
+        ax.set_title(f"раунд {r}", fontsize=10.5)
+        ax.set_xlabel(f"|p − ½| = {_n(dev[r], 3)}", fontsize=8.5)
+        ax.set_xticks([0, 64, 127])
+        ax.set_yticks([0, 64, 127])
+        ax.tick_params(labelsize=7)
+        ax.grid(False)
+    axes[0].set_ylabel("інвертований вхідний біт", fontsize=8.5)
+    cb = fig.colorbar(im, ax=axes, fraction=0.02, pad=0.02)
+    cb.set_label("P(вихідний біт змінився)", fontsize=8.5)
+    fig.suptitle("Рисунок 8 — Строгий лавинний критерій: ймовірність зміни кожного біта виходу",
+                 fontsize=12, fontweight="semibold")
+    path = save(fig, "fig8_sac.png")
+    return {"figure": path, "trials": trials, "mean_abs_deviation": {str(r): v for r, v in dev.items()},
+            "zero_share": {str(r): v for r, v in zero_share.items()}, "ideal_deviation": ideal}
+
+
+# --------------------------------------------------------------------------- #
+#  8. Властивості S-блоку
+# --------------------------------------------------------------------------- #
+
+def exp_sbox() -> dict:
+    print("[8] Критерії стійкості S-блоку")
+    import numpy as np
+    props = analysis.sbox_properties()
+    ddt = np.array(analysis.sbox_ddt())
+    lat = np.array(analysis.sbox_linear_bias())
+    # Для порівняння — випадкова перестановка байтів
+    rng = random.Random(SEED + 8)
+    perm = list(range(256))
+    rng.shuffle(perm)
+    rand_props = analysis.sbox_properties(perm)
+    fig, axes = plt.subplots(1, 3, figsize=(12.4, 3.9), gridspec_kw={"width_ratios": [1, 1, 1.15]})
+    from matplotlib.colors import ListedColormap
+    axes[0].imshow(ddt[1:], cmap=ListedColormap(["#fbf8f3", "#f4a582", "#b2182b"]), vmin=0, vmax=4,
+                   aspect="auto", interpolation="nearest")
+    axes[0].set_title("а) таблиця різниць (a ≠ 0)", fontsize=10.5)
+    axes[0].set_xlabel("вихідна різниця b", fontsize=8.5)
+    axes[0].set_ylabel("вхідна різниця a", fontsize=8.5)
+    axes[0].grid(False)
+    axes[1].imshow(np.abs(lat[:, 1:]), cmap="Blues", vmin=0, vmax=16, aspect="auto",
+                   interpolation="nearest")
+    axes[1].set_title("б) |лінійне зміщення| (b ≠ 0)", fontsize=10.5)
+    axes[1].set_xlabel("вихідна маска b", fontsize=8.5)
+    axes[1].set_ylabel("вхідна маска a", fontsize=8.5)
+    axes[1].grid(False)
+    ax = axes[2]
+    names = ["диференційна\nрівномірність", "найбільше\n|зміщення|", "алгебраїчний\nстепінь"]
+    aes_vals = [props["differential_uniformity"], props["max_linear_bias"], props["algebraic_degree"]]
+    rnd_vals = [rand_props["differential_uniformity"], rand_props["max_linear_bias"], rand_props["algebraic_degree"]]
+    x = range(3)
+    ax.bar([i - 0.18 for i in x], aes_vals, width=0.36, color=S1, label="S-блок AES")
+    ax.bar([i + 0.18 for i in x], rnd_vals, width=0.36, color=INK_2, label="випадкова перестановка")
+    for i, (a, b) in enumerate(zip(aes_vals, rnd_vals)):
+        ax.text(i - 0.18, a + 0.6, str(a), ha="center", fontsize=8.5)
+        ax.text(i + 0.18, b + 0.6, str(b), ha="center", fontsize=8.5)
+    ax.set_xticks(list(x), names, fontsize=8)
+    ax.set_title("в) менше — краще (крім степеня)", fontsize=10.5)
+    ax.legend(fontsize=8, loc="upper right")
+    _finish(ax)
+    fig.suptitle("Рисунок 9 — Чому S-блок AES побудовано саме так", fontsize=12, fontweight="semibold")
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    path = save(fig, "fig9_sbox.png")
+    return {"figure": path, "aes": props, "random_permutation": rand_props}
+
+
+# --------------------------------------------------------------------------- #
+#  9. Статистика шифротексту для одноманітних даних
+# --------------------------------------------------------------------------- #
+
+def exp_statistics(quick: bool) -> dict:
+    print("[9] Статистика байтів шифротексту")
+    rng = random.Random(SEED + 9)
+    size = 8192 if quick else 32768
+    line = "Звіт за жовтень: ДОХІД 100 000 UAH.".encode("utf-8")
+    inputs = {"нулі": bytes(size), "повторюваний текст": (line * (size // len(line) + 1))[:size],
+              "випадкові дані": rng.randbytes(size)}
+    key, iv = rng.randbytes(16), rng.randbytes(16)
+    cipher = FastAES(key)
+    out = {}
+    for name, data in inputs.items():
+        out[name] = {"plaintext": analysis.byte_statistics(data)}
+        for m in modes.MODES:
+            ct = modes.encrypt(m, cipher, iv[:modes.MODE_INFO[m]["iv"]], data)
+            out[name][m] = analysis.byte_statistics(ct[:size])
+    fig, axes = plt.subplots(1, 2, figsize=(11.2, 3.9))
+    labels = ["текст"] + [MODE_LABEL[m] for m in modes.MODES]
+    keys = ["plaintext"] + list(modes.MODES)
+    width = 0.27
+    for i, (name, color) in enumerate(zip(inputs, (INK_2, S2, S1))):
+        axes[0].bar([x + (i - 1) * width for x in range(len(keys))],
+                    [out[name][k]["entropy"] for k in keys], width=width, color=color, label=name)
+        axes[1].bar([x + (i - 1) * width for x in range(len(keys))],
+                    [out[name][k]["distinct_blocks"] / out[name][k]["blocks"] for k in keys],
+                    width=width, color=color, label=name)
+    axes[0].axhline(8, color=INK_2, ls="--", lw=1)
+    axes[0].set_ylabel("ентропія, біт на байт")
+    axes[0].set_ylim(0, 8.8)
+    axes[0].set_title("а) ентропія розподілу байтів")
+    axes[1].set_ylabel("частка різних блоків")
+    axes[1].yaxis.set_major_formatter(PercentFormatter(1.0))
+    axes[1].set_ylim(0, 1.12)
+    axes[1].set_title("б) різні 16-байтові блоки")
+    for ax in axes:
+        ax.set_xticks(range(len(keys)), labels, fontsize=8)
+        _finish(ax)
+    handles, labels_ = axes[1].get_legend_handles_labels()
+    fig.legend(handles, labels_, loc="lower center", ncol=3, fontsize=8.5, bbox_to_anchor=(0.5, -0.02))
+    fig.suptitle(f"Рисунок 10 — Шифротекст одноманітних даних ({size // 1024} КіБ)", fontsize=12,
+                 fontweight="semibold")
+    fig.tight_layout(rect=(0, 0.06, 1, 0.92))
+    path = save(fig, "fig10_statistics.png")
+    return {"figure": path, "bytes": size, "stats": out}
+
+
+# --------------------------------------------------------------------------- #
+#  10. Вартість: PBKDF2 і час на коротке повідомлення
+# --------------------------------------------------------------------------- #
+
+def exp_cost(quick: bool) -> dict:
+    print("[10] Вартість PBKDF2 і час на повідомлення")
+    import hashlib
+    iterations = [1_000, 10_000, 50_000, 100_000, 200_000, 600_000]
+    pbkdf2 = {}
+    for n in iterations:
+        samples = []
+        for _ in range(3):
+            t0 = time.perf_counter()
+            hashlib.pbkdf2_hmac("sha256", b"password", b"salt" * 4, n, 64)
+            samples.append(time.perf_counter() - t0)
+        pbkdf2[n] = min(samples)
+    rng = random.Random(SEED + 10)
+    key = rng.randbytes(16)
+    cipher = FastAES(key)
+    sizes = [16, 64, 256, 1024, 4096, 16384]
+    per_msg = {m: {} for m in ("CTR", "CBC", "GCM", "GCM_new_key")}
+    for m in per_msg:
+        mode = "GCM" if m.startswith("GCM") else m
+        for n in sizes:
+            data = rng.randbytes(n)
+            iv = rng.randbytes(modes.MODE_INFO[mode]["iv"])
+            reps = max(3, (2000 if quick else 20000) // n)
+            t0 = time.perf_counter()
+            for _ in range(reps):
+                # «новий ключ»: свіжий об'єкт шифру, таблиці GHASH будуються щоразу
+                c = FastAES(key) if m == "GCM_new_key" else cipher
+                modes.encrypt(mode, c, iv, data)
+            per_msg[m][n] = (time.perf_counter() - t0) / reps
+    fig, axes = plt.subplots(1, 2, figsize=(11.2, 3.9))
+    ax = axes[0]
+    ax.loglog(iterations, [pbkdf2[n] * 1000 for n in iterations], "o-", color=S1)
+    note = "\n".join(f"{n // 1000} тис. ітерацій: {_n(pbkdf2[n] * 1000, 0)} мс, "
+                     f"≈ {_n(1 / pbkdf2[n], 1)} спроби/с на ядро" for n in (200_000, 600_000))
+    ax.text(0.97, 0.06, note, transform=ax.transAxes, ha="right", va="bottom", fontsize=8.3,
+            color=INK, bbox=dict(boxstyle="round,pad=0.4", fc="white", ec=GRID))
+    for n in (200_000, 600_000):
+        ax.plot([n], [pbkdf2[n] * 1000], "o", color=S2, ms=7, zorder=3)
+    ax.set_xlabel("ітерацій PBKDF2-HMAC-SHA256")
+    ax.set_ylabel("мс на одне виведення ключа")
+    ax.set_title("а) ціна однієї перевірки пароля")
+    _finish(ax)
+    ax = axes[1]
+    for m, color, ls, label in (("CTR", S3, "-", "CTR"), ("CBC", S1, "-", "CBC"),
+                                ("GCM", S2, "-", "GCM, той самий ключ"),
+                                ("GCM_new_key", S4, "--", "GCM, новий ключ щоразу")):
+        ax.loglog(sizes, [per_msg[m][n] * 1e6 for n in sizes], ("s" if "new" in m else "o") + ls,
+                  color=color, label=label, ms=4)
+    ax.set_xlabel("довжина повідомлення, байтів")
+    ax.set_ylabel("мкс на повідомлення")
+    ax.set_title("б) час на одне повідомлення (таблична реалізація)")
+    ax.legend(fontsize=8.5)
+    _finish(ax, f"{cpu_name()}")
+    fig.suptitle("Рисунок 11 — Вартість ключа з пароля та накладні витрати режимів", fontsize=12,
+                 fontweight="semibold")
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    path = save(fig, "fig11_cost.png")
+    return {"figure": path, "pbkdf2_seconds": {str(k): v for k, v in pbkdf2.items()},
+            "per_message_seconds": {m: {str(k): v for k, v in d.items()} for m, d in per_msg.items()}}
+
+
+# --------------------------------------------------------------------------- #
+#  11. Детермінованість: однакові повідомлення й спільні префікси
+# --------------------------------------------------------------------------- #
+
+def exp_determinism() -> dict:
+    print("[11] Однакові повідомлення: що бачить спостерігач")
+    rng = random.Random(SEED + 11)
+    key = rng.randbytes(16)
+    cipher = FastAES(key)
+    a = b"Transfer 100 UAH to account 0001, date 2026-10-06."
+    b = b"Transfer 100 UAH to account 0001, date 2026-10-07."
+    fixed16 = rng.randbytes(16)
+    cases = [
+        ("ECB", lambda: b"", "немає IV"),
+        ("CBC", lambda: fixed16, "сталий IV"),
+        ("CBC", lambda: rng.randbytes(16), "новий випадковий IV"),
+        ("CTR", lambda: fixed16, "сталий лічильник"),
+        ("CTR", lambda: rng.randbytes(16), "новий лічильник"),
+        ("GCM", lambda: rng.randbytes(12), "новий nonce"),
+    ]
+    rows = []
+    for mode, iv_fn, label in cases:
+        iv1, iv2 = iv_fn(), iv_fn()
+        c1, c2 = modes.encrypt(mode, cipher, iv1, a), modes.encrypt(mode, cipher, iv1, a)
+        same_twice = c1 == c2 if label.startswith(("немає", "сталий")) else \
+            modes.encrypt(mode, cipher, iv1, a) == modes.encrypt(mode, cipher, iv2, a)
+        ca, cb = modes.encrypt(mode, cipher, iv1, a), modes.encrypt(mode, cipher, iv2, b)
+        common = 0
+        while common < min(len(ca), len(cb)) and ca[common] == cb[common]:
+            common += 1
+        rows.append({"mode": mode, "iv": label, "same_message_same_ciphertext": same_twice,
+                     "common_prefix_bytes": common, "plaintext_common_prefix": 48})
+    return {"messages": [a.decode(), b.decode()], "rows": rows}
+
 # --------------------------------------------------------------------------- #
 
 def write_summary(results: dict) -> None:
@@ -494,6 +725,14 @@ def write_summary(results: dict) -> None:
           "|---|" + "---:|" * len(results["speed"]["kib_per_s"])]
     for m in modes.MODES:
         L.append(f"| {MODE_LABEL[m]} | " + " | ".join(f"{v[m]:.0f}" for v in results["speed"]["kib_per_s"].values()) + " |")
+    L += ["", "## Однакові повідомлення", "", "| Режим | IV | Однаковий шифротекст | Спільний префікс, Б |",
+          "|---|---|---|---:|"]
+    for r in results["determinism"]["rows"]:
+        L.append(f"| {r['mode']} | {r['iv']} | {'так' if r['same_message_same_ciphertext'] else 'ні'} | "
+                 f"{r['common_prefix_bytes']} |")
+    s = results["sbox"]["aes"]
+    L += ["", "## S-блок AES", "", f"- диференційна рівномірність: {s['differential_uniformity']}",
+          f"- нелінійність: {s['nonlinearity']}", f"- алгебраїчний степінь: {s['algebraic_degree']}"]
     (RES / "summary.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n    зведення -> docs/results/summary.md")
 
@@ -512,6 +751,11 @@ def main() -> int:
         "overhead": exp_overhead(),
         "speed": exp_speed(args.quick),
         "parallel": exp_parallel(args.quick),
+        "sac": exp_sac(args.quick),
+        "sbox": exp_sbox(),
+        "statistics": exp_statistics(args.quick),
+        "cost": exp_cost(args.quick),
+        "determinism": exp_determinism(),
         "properties": {m: dict(zip(analysis.PROPERTY_NAMES, v)) for m, v in analysis.PROPERTIES.items()},
     }
     results["elapsed_s"] = round(time.perf_counter() - t0, 1)
