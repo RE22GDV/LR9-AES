@@ -1,0 +1,261 @@
+{
+ "note": "Офіційні тестові вектори: FIPS-197, NIST SP 800-38A, McGrew–Viega (GCM), RFC 3962 (CTS = CBC-CS3).",
+ "vectors": [
+  {
+   "source": "FIPS-197 C (256)",
+   "mode": "BLOCK",
+   "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+   "iv": "",
+   "plaintext": "00112233445566778899aabbccddeeff",
+   "ciphertext": "8ea2b7ca516745bfeafc49904b496089"
+  },
+  {
+   "source": "FIPS-197 C (192)",
+   "mode": "BLOCK",
+   "key": "000102030405060708090a0b0c0d0e0f1011121314151617",
+   "iv": "",
+   "plaintext": "00112233445566778899aabbccddeeff",
+   "ciphertext": "dda97ca4864cdfe06eaf70a0ec0d7191"
+  },
+  {
+   "source": "FIPS-197 C (128)",
+   "mode": "BLOCK",
+   "key": "000102030405060708090a0b0c0d0e0f",
+   "iv": "",
+   "plaintext": "00112233445566778899aabbccddeeff",
+   "ciphertext": "69c4e0d86a7b0430d8cdb78070b4c55a"
+  },
+  {
+   "source": "NIST SP 800-38A F.1 (ECB-AES128)",
+   "mode": "ECB",
+   "key": "2b7e151628aed2a6abf7158809cf4f3c",
+   "iv": "",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "3ad77bb40d7a3660a89ecaf32466ef97f5d3d58503b9699de785895a96fdbaaf43b1cd7f598ece23881b00e3ed0306887b0c785e27e8ad3f8223207104725dd4"
+  },
+  {
+   "source": "NIST SP 800-38A F.2 (CBC-AES128)",
+   "mode": "CBC",
+   "key": "2b7e151628aed2a6abf7158809cf4f3c",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b273bed6b8e3c1743b7116e69e222295163ff1caa1681fac09120eca307586e1a7"
+  },
+  {
+   "source": "NIST SP 800-38A F.3 (CFB8-AES128)",
+   "mode": "CFB8",
+   "key": "2b7e151628aed2a6abf7158809cf4f3c",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d",
+   "ciphertext": "3b79424c9c0dd436bace9e0ed4586a4f32b9"
+  },
+  {
+   "source": "NIST SP 800-38A F.3 (CFB-AES128)",
+   "mode": "CFB",
+   "key": "2b7e151628aed2a6abf7158809cf4f3c",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "3b3fd92eb72dad20333449f8e83cfb4ac8a64537a0b3a93fcde3cdad9f1ce58b26751f67a3cbb140b1808cf187a4f4dfc04b05357c5d1c0eeac4c66f9ff7f2e6"
+  },
+  {
+   "source": "NIST SP 800-38A F.4 (OFB-AES128)",
+   "mode": "OFB",
+   "key": "2b7e151628aed2a6abf7158809cf4f3c",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "3b3fd92eb72dad20333449f8e83cfb4a7789508d16918f03f53c52dac54ed8259740051e9c5fecf64344f7a82260edcc304c6528f659c77866a510d9c1d6ae5e"
+  },
+  {
+   "source": "NIST SP 800-38A F.5 (CTR-AES128)",
+   "mode": "CTR",
+   "key": "2b7e151628aed2a6abf7158809cf4f3c",
+   "iv": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff5ae4df3edbd5d35e5b4f09020db03eab1e031dda2fbe03d1792170a0f3009cee"
+  },
+  {
+   "source": "NIST SP 800-38A F.1 (ECB-AES192)",
+   "mode": "ECB",
+   "key": "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b",
+   "iv": "",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "bd334f1d6e45f25ff712a214571fa5cc974104846d0ad3ad7734ecb3ecee4eefef7afd2270e2e60adce0ba2face6444e9a4b41ba738d6c72fb16691603c18e0e"
+  },
+  {
+   "source": "NIST SP 800-38A F.2 (CBC-AES192)",
+   "mode": "CBC",
+   "key": "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "4f021db243bc633d7178183a9fa071e8b4d9ada9ad7dedf4e5e738763f69145a571b242012fb7ae07fa9baac3df102e008b0e27988598881d920a9e64f5615cd"
+  },
+  {
+   "source": "NIST SP 800-38A F.3 (CFB8-AES192)",
+   "mode": "CFB8",
+   "key": "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d",
+   "ciphertext": "cda2521ef0a905ca44cd057cbf0d47a0678a"
+  },
+  {
+   "source": "NIST SP 800-38A F.3 (CFB-AES192)",
+   "mode": "CFB",
+   "key": "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "cdc80d6fddf18cab34c25909c99a417467ce7f7f81173621961a2b70171d3d7a2e1e8a1dd59b88b1c8e60fed1efac4c9c05f9f9ca9834fa042ae8fba584b09ff"
+  },
+  {
+   "source": "NIST SP 800-38A F.4 (OFB-AES192)",
+   "mode": "OFB",
+   "key": "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "cdc80d6fddf18cab34c25909c99a4174fcc28b8d4c63837c09e81700c11004018d9a9aeac0f6596f559c6d4daf59a5f26d9f200857ca6c3e9cac524bd9acc92a"
+  },
+  {
+   "source": "NIST SP 800-38A F.5 (CTR-AES192)",
+   "mode": "CTR",
+   "key": "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b",
+   "iv": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "1abc932417521ca24f2b0459fe7e6e0b090339ec0aa6faefd5ccc2c6f4ce8e941e36b26bd1ebc670d1bd1d665620abf74f78a7f6d29809585a97daec58c6b050"
+  },
+  {
+   "source": "NIST SP 800-38A F.1 (ECB-AES256)",
+   "mode": "ECB",
+   "key": "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
+   "iv": "",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "f3eed1bdb5d2a03c064b5a7e3db181f8591ccb10d410ed26dc5ba74a31362870b6ed21b99ca6f4f9f153e7b1beafed1d23304b7a39f9f3ff067d8d8f9e24ecc7"
+  },
+  {
+   "source": "NIST SP 800-38A F.2 (CBC-AES256)",
+   "mode": "CBC",
+   "key": "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "f58c4c04d6e5f1ba779eabfb5f7bfbd69cfc4e967edb808d679f777bc6702c7d39f23369a9d9bacfa530e26304231461b2eb05e2c39be9fcda6c19078c6a9d1b"
+  },
+  {
+   "source": "NIST SP 800-38A F.3 (CFB8-AES256)",
+   "mode": "CFB8",
+   "key": "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d",
+   "ciphertext": "dc1f1a8520a64db55fcc8ac554844e889700"
+  },
+  {
+   "source": "NIST SP 800-38A F.3 (CFB-AES256)",
+   "mode": "CFB",
+   "key": "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "dc7e84bfda79164b7ecd8486985d386039ffed143b28b1c832113c6331e5407bdf10132415e54b92a13ed0a8267ae2f975a385741ab9cef82031623d55b1e471"
+  },
+  {
+   "source": "NIST SP 800-38A F.4 (OFB-AES256)",
+   "mode": "OFB",
+   "key": "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
+   "iv": "000102030405060708090a0b0c0d0e0f",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "dc7e84bfda79164b7ecd8486985d38604febdc6740d20b3ac88f6ad82a4fb08d71ab47a086e86eedf39d1c5bba97c4080126141d67f37be8538f5a8be740e484"
+  },
+  {
+   "source": "NIST SP 800-38A F.5 (CTR-AES256)",
+   "mode": "CTR",
+   "key": "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
+   "iv": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+   "plaintext": "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710",
+   "ciphertext": "601ec313775789a5b7a7f504bbf3d228f443e3ca4d62b59aca84e990cacaf5c52b0930daa23de94ce87017ba2d84988ddfc9c58db67aada613c2dd08457941a6"
+  },
+  {
+   "source": "McGrew–Viega, GCM test case 1",
+   "mode": "GCM",
+   "key": "00000000000000000000000000000000",
+   "iv": "000000000000000000000000",
+   "aad": "",
+   "plaintext": "",
+   "ciphertext": "",
+   "tag": "58e2fccefa7e3061367f1d57a4e7455a"
+  },
+  {
+   "source": "McGrew–Viega, GCM test case 2",
+   "mode": "GCM",
+   "key": "00000000000000000000000000000000",
+   "iv": "000000000000000000000000",
+   "aad": "",
+   "plaintext": "00000000000000000000000000000000",
+   "ciphertext": "0388dace60b6a392f328c2b971b2fe78",
+   "tag": "ab6e47d42cec13bdf53a67b21257bddf"
+  },
+  {
+   "source": "McGrew–Viega, GCM test case 3",
+   "mode": "GCM",
+   "key": "feffe9928665731c6d6a8f9467308308",
+   "iv": "cafebabefacedbaddecaf888",
+   "aad": "",
+   "plaintext": "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255",
+   "ciphertext": "42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091473f5985",
+   "tag": "4d5c2af327cd64a62cf35abd2ba6fab4"
+  },
+  {
+   "source": "McGrew–Viega, GCM test case 4",
+   "mode": "GCM",
+   "key": "feffe9928665731c6d6a8f9467308308",
+   "iv": "cafebabefacedbaddecaf888",
+   "aad": "feedfacedeadbeeffeedfacedeadbeefabaddad2",
+   "plaintext": "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39",
+   "ciphertext": "42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091",
+   "tag": "5bc94fbc3221a5db94fae95ae7121a47"
+  },
+  {
+   "source": "RFC 3962, додаток B (17 байтів)",
+   "mode": "CTS",
+   "key": "636869636b656e207465726979616b69",
+   "iv": "00000000000000000000000000000000",
+   "plaintext": "4920776f756c64206c696b652074686520",
+   "ciphertext": "c6353568f2bf8cb4d8a580362da7ff7f97"
+  },
+  {
+   "source": "RFC 3962, додаток B (31 байтів)",
+   "mode": "CTS",
+   "key": "636869636b656e207465726979616b69",
+   "iv": "00000000000000000000000000000000",
+   "plaintext": "4920776f756c64206c696b65207468652047656e6572616c20476175277320",
+   "ciphertext": "fc00783e0efdb2c1d445d4c8eff7ed2297687268d6ecccc0c07b25e25ecfe5"
+  },
+  {
+   "source": "RFC 3962, додаток B (32 байтів)",
+   "mode": "CTS",
+   "key": "636869636b656e207465726979616b69",
+   "iv": "00000000000000000000000000000000",
+   "plaintext": "4920776f756c64206c696b65207468652047656e6572616c2047617527732043",
+   "ciphertext": "39312523a78662d5be7fcbcc98ebf5a897687268d6ecccc0c07b25e25ecfe584"
+  },
+  {
+   "source": "RFC 3962, додаток B (47 байтів)",
+   "mode": "CTS",
+   "key": "636869636b656e207465726979616b69",
+   "iv": "00000000000000000000000000000000",
+   "plaintext": "4920776f756c64206c696b65207468652047656e6572616c20476175277320436869636b656e2c20706c656173652c",
+   "ciphertext": "97687268d6ecccc0c07b25e25ecfe584b3fffd940c16a18c1b5549d2f838029e39312523a78662d5be7fcbcc98ebf5"
+  },
+  {
+   "source": "RFC 3962, додаток B (48 байтів)",
+   "mode": "CTS",
+   "key": "636869636b656e207465726979616b69",
+   "iv": "00000000000000000000000000000000",
+   "plaintext": "4920776f756c64206c696b65207468652047656e6572616c20476175277320436869636b656e2c20706c656173652c20",
+   "ciphertext": "97687268d6ecccc0c07b25e25ecfe5849dad8bbb96c4cdc03bc103e1a194bbd839312523a78662d5be7fcbcc98ebf5a8"
+  },
+  {
+   "source": "RFC 3962, додаток B (64 байтів)",
+   "mode": "CTS",
+   "key": "636869636b656e207465726979616b69",
+   "iv": "00000000000000000000000000000000",
+   "plaintext": "4920776f756c64206c696b65207468652047656e6572616c20476175277320436869636b656e2c20706c656173652c20616e6420776f6e746f6e20736f75702e",
+   "ciphertext": "97687268d6ecccc0c07b25e25ecfe58439312523a78662d5be7fcbcc98ebf5a84807efe836ee89a526730dbc2f7bc8409dad8bbb96c4cdc03bc103e1a194bbd8"
+  }
+ ]
+}

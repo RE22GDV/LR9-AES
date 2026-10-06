@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# .NET
+csharp/**/bin/
+csharp/**/obj/
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Локальні чернетки
+scratch/
+*.tmp
+
+# Звіт (локальний файл, у репозиторій не потрапляє)
+docs/*.pdf
+docs/*.docx
