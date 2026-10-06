@@ -757,6 +757,7 @@ def main() -> int:
         "cost": exp_cost(args.quick),
         "determinism": exp_determinism(),
         "properties": {m: dict(zip(analysis.PROPERTY_NAMES, v)) for m, v in analysis.PROPERTIES.items()},
+        "property_notes": list(analysis.PROPERTY_NOTES),
     }
     results["elapsed_s"] = round(time.perf_counter() - t0, 1)
     write_summary(results)

@@ -39,7 +39,9 @@ public static class Program
     private static int Demo(string text)
     {
         byte[] key = RandomNumberGenerator.GetBytes(32);      // AES-256
-        byte[] counter = RandomNumberGenerator.GetBytes(16);  // унікальний для кожного повідомлення
+        // Випадковий 128-бітовий лічильник: діапазони блоків лічильника різних
+        // повідомлень під одним ключем практично не перетинаються.
+        byte[] counter = RandomNumberGenerator.GetBytes(16);
         byte[] plaintext = Encoding.UTF8.GetBytes(text);
 
         byte[] ciphertext = AesCtr.Encrypt(plaintext, key, counter);

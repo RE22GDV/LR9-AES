@@ -138,3 +138,12 @@ def test_byte_statistics() -> None:
     assert zeros["entropy"] == 0.0 and zeros["distinct_blocks"] == 1
     rnd = analysis.byte_statistics(random.Random(1).randbytes(65536))
     assert rnd["entropy"] > 7.99 and rnd["distinct_blocks"] == rnd["blocks"]
+
+
+def test_property_table_notes() -> None:
+    """Кожна позначка в таблиці властивостей має примітку, і навпаки."""
+    marks = {ch for row in analysis.PROPERTIES.values() for cell in row for ch in cell if ch in "¹²³"}
+    assert marks == {note[0] for note in analysis.PROPERTY_NOTES}
+    assert len(analysis.PROPERTY_NAMES) == len(analysis.PROPERTIES["ECB"])
+    for m in ("CBC", "CFB8", "CFB", "CTS"):                  # SP 800-38A: IV непередбачуваний
+        assert analysis.PROPERTIES[m][1] == "16 Б, непередбачуваний"

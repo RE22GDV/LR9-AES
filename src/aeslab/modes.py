@@ -278,20 +278,29 @@ def _inc32_stream(cipher, j0: int, length: int) -> bytes:
     return bytes(out[:length])
 
 
+# Довжина тегу фіксована: SP 800-38D вимагає перевіряти заздалегідь визначену
+# довжину, інакше порожній або скорочений тег пройшов би порівняння префікса.
+GCM_TAG_LEN = 16
+
+
 def gcm_encrypt(cipher, nonce: bytes, data: bytes, aad: bytes = b"",
-                tag_len: int = 16) -> tuple[bytes, bytes]:
+                tag_len: int = GCM_TAG_LEN) -> tuple[bytes, bytes]:
+    if tag_len != GCM_TAG_LEN:
+        raise ValueError(f"підтримано лише {GCM_TAG_LEN}-байтовий тег GCM")
     gh, j0 = _gcm_setup(cipher, nonce)
     ct = _xor(data, _inc32_stream(cipher, j0, len(data)))
     s = gh.digest(aad, ct)
     tag = _xor(cipher.encrypt_block(j0.to_bytes(BLOCK, "big")), s.to_bytes(BLOCK, "big"))
-    return ct, tag[:tag_len]
+    return ct, tag
 
 
 def gcm_decrypt(cipher, nonce: bytes, data: bytes, tag: bytes, aad: bytes = b"") -> bytes:
+    if len(tag) != GCM_TAG_LEN:
+        raise AuthenticationError(f"тег GCM має містити {GCM_TAG_LEN} байтів")
     gh, j0 = _gcm_setup(cipher, nonce)
     s = gh.digest(aad, data)
     expected = _xor(cipher.encrypt_block(j0.to_bytes(BLOCK, "big")), s.to_bytes(BLOCK, "big"))
-    if not hmac.compare_digest(expected[:len(tag)], tag):
+    if not hmac.compare_digest(expected, tag):
         raise AuthenticationError("тег GCM не збігся")
     return _xor(data, _inc32_stream(cipher, j0, len(data)))
 
@@ -350,7 +359,7 @@ def decrypt(mode: str, cipher, iv: bytes, data: bytes, aad: bytes = b"") -> byte
     if mode == "CTS":
         return cts_decrypt(cipher, iv, data)
     if mode == "GCM":
-        if len(data) < 16:
+        if len(data) < GCM_TAG_LEN:
             raise AuthenticationError("шифротекст GCM коротший за тег")
-        return gcm_decrypt(cipher, iv, data[:-16], data[-16:], aad)
+        return gcm_decrypt(cipher, iv, data[:-GCM_TAG_LEN], data[-GCM_TAG_LEN:], aad)
     raise ValueError(f"невідомий режим {mode!r}")

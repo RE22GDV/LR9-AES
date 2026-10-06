@@ -40,14 +40,15 @@ def test_csharp_ctr_matches_python() -> None:
         assert _run(["ctr", key.hex(), ctr.hex(), data.hex() or ""]) == expected
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def app():
+    # Одне вікно на модуль: повторне створення Tk у Windows зрідка падає з TclError.
     tk = pytest.importorskip("tkinter")
     try:
         from aeslab.gui import AESStudio
         window = AESStudio()
-    except tk.TclError:
-        pytest.skip("немає графічного середовища")
+    except tk.TclError as error:
+        pytest.skip(f"немає графічного середовища ({error})")
     window.withdraw()
     yield window
     window.destroy()

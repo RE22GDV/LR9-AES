@@ -107,6 +107,29 @@ def test_gcm_detects_any_change() -> None:
         modes.decrypt("GCM", c, bytes(11) + b"\x01", ct, aad)
 
 
+def test_gcm_rejects_short_tags() -> None:
+    """Порожній або скорочений тег не приймається, навіть якщо це префікс правильного."""
+    c, nonce, aad = FastAES(bytes(range(16))), bytes(12), b"header"
+    ct, tag = modes.gcm_encrypt(c, nonce, b"PAY 100 UAH to account 42", aad)
+    assert len(tag) == modes.GCM_TAG_LEN == 16
+    damaged = bytes([ct[0] ^ 1]) + ct[1:]
+    for short in (b"", tag[:1], tag[:12], tag[:15]):
+        for body in (ct, damaged):
+            with pytest.raises(modes.AuthenticationError):
+                modes.gcm_decrypt(c, nonce, body, short, aad)
+    with pytest.raises(modes.AuthenticationError):
+        modes.gcm_decrypt(c, nonce, ct, tag + b"\x00", aad)
+    with pytest.raises(modes.AuthenticationError):                # без тегу взагалі
+        modes.decrypt("GCM", c, nonce, tag[:15], aad)
+    assert modes.gcm_decrypt(c, nonce, ct, tag, aad) == b"PAY 100 UAH to account 42"
+
+
+@pytest.mark.parametrize("tag_len", [0, 1, 4, 8, 12, 15, 17])
+def test_gcm_encrypt_accepts_only_16_byte_tag(tag_len: int) -> None:
+    with pytest.raises(ValueError):
+        modes.gcm_encrypt(FastAES(bytes(16)), bytes(12), b"data", tag_len=tag_len)
+
+
 def test_gcm_multiplication_properties() -> None:
     rng = random.Random(3)
     one = 1 << 127                                     # одиниця поля в порядку бітів GCM
